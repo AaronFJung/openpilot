@@ -286,6 +286,7 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"GithubRunnerSufficientVoltage", {CLEAR_ON_MANAGER_START , BOOL}},
     {"HasAcceptedTermsSP", {PERSISTENT, STRING, "0"}},
     {"HideConfidenceBall", {PERSISTENT | BACKUP, BOOL, "0"}},
+    {"HideSteeringWheelIcon", {PERSISTENT | BACKUP, BOOL, "0"}},
     {"HideVEgoUI", {PERSISTENT | BACKUP, BOOL, "0"}},
     {"IntelligentCruiseButtonManagement", {PERSISTENT | BACKUP , BOOL}},
     {"InteractivityTimeout", {PERSISTENT | BACKUP, INT, "0"}},

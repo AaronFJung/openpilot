@@ -1403,6 +1403,19 @@
               ]
             },
             {
+              "key": "HideSteeringWheelIcon",
+              "widget": "toggle",
+              "title": "Hide Steering Wheel Icon",
+              "description": "Hide the steering wheel icon in the bottom left of the driving screen. It still appears during take control alerts. comma four only.",
+              "visibility": [
+                {
+                  "type": "capability",
+                  "field": "device_type",
+                  "equals": "mici"
+                }
+              ]
+            },
+            {
               "key": "RoadNameToggle",
               "widget": "toggle",
               "title": "Display Road Name",
