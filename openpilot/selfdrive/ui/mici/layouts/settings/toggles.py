@@ -10,6 +10,7 @@ from openpilot.selfdrive.ui.layouts.settings.common import restart_needed_callba
 from openpilot.selfdrive.ui.ui_state import ui_state
 
 PERSONALITY_TO_INT = log.LongitudinalPersonality.schema.enumerants
+SET_SPEED_START_OPTIONS = ["default", "my speed", "my speed +5", "my speed +10"]
 
 
 class ExperimentalModeConfirmPage(NavScroller):
@@ -53,6 +54,7 @@ class TogglesLayoutMici(NavScroller):
     hide_confidence_ball = BigParamControl("hide confidence ball", "HideConfidenceBall")
     hide_steering_wheel_icon = BigParamControl("hide steering wheel", "HideSteeringWheelIcon")
     show_stop_indicator = BigParamControl("show planned stop", "ShowStopIndicator")
+    self._set_speed_start = BigMultiParamToggle("set speed start", "SetSpeedStart", SET_SPEED_START_OPTIONS)
 
     self._scroller.add_widgets([
       self._personality_toggle,
@@ -66,6 +68,7 @@ class TogglesLayoutMici(NavScroller):
       hide_confidence_ball,
       hide_steering_wheel_icon,
       show_stop_indicator,
+      self._set_speed_start,
     ])
 
     # Toggle lists
@@ -123,6 +126,9 @@ class TogglesLayoutMici(NavScroller):
     # Refresh toggles from params to mirror external changes
     for key, item in self._refresh_toggles:
       item.set_checked(ui_state.params.get_bool(key))
+    set_speed_start = min(ui_state.params.get("SetSpeedStart", return_default=True) or 0, len(SET_SPEED_START_OPTIONS) - 1)
+    self._set_speed_start.set_value(SET_SPEED_START_OPTIONS[set_speed_start])
+    self._set_speed_start.set_visible(ui_state.has_longitudinal_control)
 
   def _on_experimental_mode(self, state: bool):
     if state and not ui_state.params.get_bool("ExperimentalModeConfirmed"):

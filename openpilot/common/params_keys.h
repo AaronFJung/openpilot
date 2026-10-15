@@ -287,6 +287,7 @@ inline static std::unordered_map<std::string, ParamKeyAttributes> keys = {
     {"HasAcceptedTermsSP", {PERSISTENT, STRING, "0"}},
     {"HideConfidenceBall", {PERSISTENT | BACKUP, BOOL, "0"}},
     {"HideSteeringWheelIcon", {PERSISTENT | BACKUP, BOOL, "0"}},
+    {"SetSpeedStart", {PERSISTENT | BACKUP, INT, "0"}},
     {"ShowStopIndicator", {PERSISTENT | BACKUP, BOOL, "0"}},
     {"HideVEgoUI", {PERSISTENT | BACKUP, BOOL, "0"}},
     {"IntelligentCruiseButtonManagement", {PERSISTENT | BACKUP , BOOL}},

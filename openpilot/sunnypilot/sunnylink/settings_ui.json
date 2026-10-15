@@ -653,6 +653,45 @@
               ]
             },
             {
+              "key": "SetSpeedStart",
+              "widget": "multiple_button",
+              "title": "Set Speed Start",
+              "description": "What pressing SET sets the cruise speed to. Default uses stock behavior, which starts at 65 mph or higher in experimental mode. The other options start at your current speed, plus 5 or 10 in your display units.",
+              "options": [
+                {
+                  "value": 0,
+                  "label": "Default"
+                },
+                {
+                  "value": 1,
+                  "label": "My Speed"
+                },
+                {
+                  "value": 2,
+                  "label": "My Speed +5"
+                },
+                {
+                  "value": 3,
+                  "label": "My Speed +10"
+                }
+              ],
+              "enablement": [
+                {
+                  "type": "capability",
+                  "field": "has_longitudinal_control",
+                  "equals": true
+                },
+                {
+                  "type": "not",
+                  "condition": {
+                    "type": "capability",
+                    "field": "pcm_cruise",
+                    "equals": true
+                  }
+                }
+              ]
+            },
+            {
               "key": "IntelligentCruiseButtonManagement",
               "widget": "toggle",
               "title": "Intelligent Cruise Button Management (ICBM) (Alpha)",

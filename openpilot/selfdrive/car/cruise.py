@@ -148,6 +148,8 @@ class VCruiseHelper(VCruiseHelperSP):
 
     if any(b.type in (ButtonType.accelCruise, ButtonType.resumeCruise) for b in CS.buttonEvents) and self.v_cruise_initialized:
       self.v_cruise_kph = self.v_cruise_kph_last
+    elif self.set_speed_start:
+      self.v_cruise_kph = self.get_set_speed_start_kph(CS.vEgo, V_CRUISE_INITIAL, V_CRUISE_MAX)
     else:
       self.v_cruise_kph = int(round(np.clip(CS.vEgo * CV.MS_TO_KPH, initial, V_CRUISE_MAX)))
 

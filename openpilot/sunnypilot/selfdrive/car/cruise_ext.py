@@ -25,6 +25,7 @@ CRUISE_BUTTON_TIMER = {ButtonType.decelCruise: 0, ButtonType.accelCruise: 0,
 V_CRUISE_MIN = 8
 V_CRUISE_MAX = 145
 V_CRUISE_UNSET = 255
+SET_SPEED_START_OFFSETS = {1: 0, 2: 5, 3: 10}  # SetSpeedStart value -> offset in display units
 
 
 def update_manual_button_timers(CS: car.CarState, button_timers: dict[car.CarState.ButtonEvent.Type, int]) -> None:
@@ -53,6 +54,10 @@ class VCruiseHelperSP:
     self.short_increment = self.params.get("CustomAccShortPressIncrement", return_default=True)
     self.long_increment = self.params.get("CustomAccLongPressIncrement", return_default=True)
 
+    # Set speed start: 0 = stock, 1 = current speed, 2 = current + 5, 3 = current + 10 (display units)
+    self.set_speed_start = self.params.get("SetSpeedStart", return_default=True)
+    self.set_speed_start_metric = self.params.get_bool("IsMetric")
+
     self.enable_button_timers = CRUISE_BUTTON_TIMER
 
     # Speed Limit Assist
@@ -65,7 +70,18 @@ class VCruiseHelperSP:
     self.req_plus = False
     self.req_minus = False
 
+  def get_set_speed_start_kph(self, v_ego: float, v_min_kph: float, v_max_kph: float) -> int:
+    """Set speed when SET is pressed: current speed rounded in display units, plus the chosen offset."""
+    offset = SET_SPEED_START_OFFSETS.get(self.set_speed_start, 0)
+    if self.set_speed_start_metric:
+      v_kph = round(v_ego * CV.MS_TO_KPH) + offset
+    else:
+      v_kph = (round(v_ego * CV.MS_TO_MPH) + offset) * CV.MPH_TO_KPH
+    return int(round(np.clip(v_kph, v_min_kph, v_max_kph)))
+
   def read_custom_set_speed_params(self) -> None:
+    self.set_speed_start = self.params.get("SetSpeedStart", return_default=True)
+    self.set_speed_start_metric = self.params.get_bool("IsMetric")
     self.custom_acc_enabled = self.params.get_bool("CustomAccIncrementsEnabled")
     self.short_increment = self.params.get("CustomAccShortPressIncrement", return_default=True)
     self.long_increment = self.params.get("CustomAccLongPressIncrement", return_default=True)
