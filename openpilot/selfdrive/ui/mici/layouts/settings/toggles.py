@@ -71,6 +71,7 @@ class TogglesLayoutMici(NavScroller):
                                        description="Enable to use sunnypilot driver assistance.\n" +
                                                    "Disable to use your car's stock driver assistance.")
 
+    hide_confidence_ball = BigParamControl("hide confidence ball", "HideConfidenceBall")
 
     self._scroller.add_widgets([
       self._personality_toggle,
@@ -82,6 +83,7 @@ class TogglesLayoutMici(NavScroller):
       record_front,
       record_mic,
       enable_openpilot,
+      hide_confidence_ball,
     ])
 
     # Toggle lists
@@ -93,6 +95,7 @@ class TogglesLayoutMici(NavScroller):
       ("RecordFront", record_front),
       ("RecordAudio", record_mic),
       ("OpenpilotEnabledToggle", enable_openpilot),
+      ("HideConfidenceBall", hide_confidence_ball),
     )
 
     enable_openpilot.set_enabled(lambda: not ui_state.engaged)

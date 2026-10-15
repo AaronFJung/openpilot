@@ -227,7 +227,7 @@ class AugmentedRoadView(CameraView):
     self._content_rect = rl.Rectangle(
       self.rect.x,
       self.rect.y,
-      self.rect.width - (PANEL_WIDTH if show_navigation else SIDE_PANEL_WIDTH),
+      self.rect.width - (PANEL_WIDTH if show_navigation else (0 if ui_state.hide_confidence_ball else SIDE_PANEL_WIDTH)),
       self.rect.height,
     )
 
@@ -247,7 +247,13 @@ class AugmentedRoadView(CameraView):
     self._model_renderer.render(self._content_rect)
 
     # Fade out bottom of overlays for looks
-    rl.draw_texture_ex(self._fade_texture, rl.Vector2(self._content_rect.x, self._content_rect.y), 0.0, 1.0, rl.WHITE)
+    if ui_state.hide_confidence_ball:
+      # stretch the fade across the widened view
+      rl.draw_texture_pro(self._fade_texture, rl.Rectangle(0, 0, self._fade_texture.width, self._fade_texture.height),
+                          rl.Rectangle(self._content_rect.x, self._content_rect.y, self._content_rect.width, self._fade_texture.height),
+                          rl.Vector2(0, 0), 0.0, rl.WHITE)
+    else:
+      rl.draw_texture_ex(self._fade_texture, rl.Vector2(self._content_rect.x, self._content_rect.y), 0.0, 1.0, rl.WHITE)
 
     # Hide DMoji when disengaged unless AlwaysOnDM is enabled
     should_draw_dmoji = (not self._hud_renderer.drawing_top_icons() and
@@ -274,7 +280,7 @@ class AugmentedRoadView(CameraView):
     # Use self._content_rect for positioning within camera bounds
     if show_navigation:
       self._navigation.render(rl.Rectangle(self._content_rect.x + self._content_rect.width, self.rect.y, PANEL_WIDTH, self.rect.height))
-    else:
+    elif not ui_state.hide_confidence_ball:
       self._confidence_ball.render(self.rect)
 
     self._bookmark_icon.render(self.rect)
