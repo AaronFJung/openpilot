@@ -50,6 +50,7 @@ class TogglesLayoutMici(NavScroller):
     record_front = BigParamControl("record & upload cabin camera", "RecordFront", toggle_callback=restart_needed_callback)
     record_mic = BigParamControl("record & upload mic audio", "RecordAudio", toggle_callback=restart_needed_callback)
     enable_openpilot = BigParamControl("enable sunnypilot", "OpenpilotEnabledToggle", toggle_callback=restart_needed_callback)
+    hide_confidence_ball = BigParamControl("hide confidence ball", "HideConfidenceBall")
 
     self._scroller.add_widgets([
       self._personality_toggle,
@@ -60,6 +61,7 @@ class TogglesLayoutMici(NavScroller):
       record_front,
       record_mic,
       enable_openpilot,
+      hide_confidence_ball,
     ])
 
     # Toggle lists
@@ -71,6 +73,7 @@ class TogglesLayoutMici(NavScroller):
       ("RecordFront", record_front),
       ("RecordAudio", record_mic),
       ("OpenpilotEnabledToggle", enable_openpilot),
+      ("HideConfidenceBall", hide_confidence_ball),
     )
 
     enable_openpilot.set_enabled(lambda: not ui_state.engaged)

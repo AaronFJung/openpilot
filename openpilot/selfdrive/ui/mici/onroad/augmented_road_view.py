@@ -199,7 +199,7 @@ class AugmentedRoadView(CameraView):
     self._content_rect = rl.Rectangle(
       self.rect.x,
       self.rect.y,
-      self.rect.width - SIDE_PANEL_WIDTH,
+      self.rect.width - (0 if ui_state.hide_confidence_ball else SIDE_PANEL_WIDTH),
       self.rect.height,
     )
 
@@ -219,7 +219,13 @@ class AugmentedRoadView(CameraView):
     self._model_renderer.render(self._content_rect)
 
     # Fade out bottom of overlays for looks
-    rl.draw_texture_ex(self._fade_texture, rl.Vector2(self._content_rect.x, self._content_rect.y), 0.0, 1.0, rl.WHITE)
+    if ui_state.hide_confidence_ball:
+      # stretch the fade across the widened view
+      rl.draw_texture_pro(self._fade_texture, rl.Rectangle(0, 0, self._fade_texture.width, self._fade_texture.height),
+                          rl.Rectangle(self._content_rect.x, self._content_rect.y, self._content_rect.width, self._fade_texture.height),
+                          rl.Vector2(0, 0), 0.0, rl.WHITE)
+    else:
+      rl.draw_texture_ex(self._fade_texture, rl.Vector2(self._content_rect.x, self._content_rect.y), 0.0, 1.0, rl.WHITE)
 
     alert_to_render, not_animating_out = self._alert_renderer.will_render()
 
@@ -244,7 +250,8 @@ class AugmentedRoadView(CameraView):
 
     # Custom UI extension point - add custom overlays here
     # Use self._content_rect for positioning within camera bounds
-    self._confidence_ball.render(self.rect)
+    if not ui_state.hide_confidence_ball:
+      self._confidence_ball.render(self.rect)
 
     self._bookmark_icon.render(self.rect)
 

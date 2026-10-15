@@ -24,6 +24,13 @@ sections:
     widget: toggle
     title: Display Turn Signals
     description: When enabled, visual turn indicators are drawn on the HUD.
+  - key: HideConfidenceBall
+    widget: toggle
+    title: Hide Confidence Ball
+    description: Hide the confidence ball on the right edge of the driving screen and widen the camera view into that space.
+      comma four only.
+    visibility:
+    - {type: capability, field: device_type, equals: mici}
   - key: RoadNameToggle
     widget: toggle
     title: Display Road Name
