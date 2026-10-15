@@ -15,6 +15,8 @@ from openpilot.common.filter_simple import FirstOrderFilter
 
 # TODO: arc_bar_pts doesn't consider rounded end caps part of the angle span
 TORQUE_ANGLE_SPAN = 12.7
+# TorqueBarHeight param: (height at low torque, height at full torque) scales for default, compact
+TORQUE_BAR_HEIGHT_SCALES = ((1.0, 1.0), (0.75, 0.375))
 
 DEBUG = False
 
@@ -192,7 +194,8 @@ class TorqueBar(Widget):
   def _render(self, rect: rl.Rectangle) -> None:
     # adjust y pos with torque
     torque_line_offset = np.interp(abs(self._torque_filter.x), [0.5, 1], [22 * self._scale, 26 * self._scale])
-    torque_line_height = np.interp(abs(self._torque_filter.x), [0.5, 1], [14 * self._scale, 56 * self._scale])
+    rest_scale, max_scale = TORQUE_BAR_HEIGHT_SCALES[min(max(ui_state.torque_bar_height, 0), len(TORQUE_BAR_HEIGHT_SCALES) - 1)]
+    torque_line_height = np.interp(abs(self._torque_filter.x), [0.5, 1], [14 * self._scale * rest_scale, 56 * self._scale * max_scale])
 
     # animate alpha and angle span
     if not self._demo:
@@ -264,5 +267,6 @@ class TorqueBar(Widget):
     # draw center torque bar dot
     if abs(self._torque_filter.x) < 0.5:
       dot_y = self._rect.y + self._rect.height - torque_line_offset - torque_line_height / 2
-      rl.draw_circle(int(cx), int(dot_y), (10 // 2 * self._scale),
-                     rl.Color(182, 182, 182, int(255 * 0.9 * self._torque_line_alpha_filter.x)))
+      dot_radius = 14 * self._scale * rest_scale / 2 - 2 * self._scale  # keep a 2px gap to the bar edges at any height
+      rl.draw_circle_v(rl.Vector2(cx, dot_y), dot_radius,
+                       rl.Color(182, 182, 182, int(255 * 0.9 * self._torque_line_alpha_filter.x)))

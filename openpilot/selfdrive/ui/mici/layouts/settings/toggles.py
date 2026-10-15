@@ -11,6 +11,7 @@ from openpilot.selfdrive.ui.ui_state import ui_state
 
 PERSONALITY_TO_INT = log.LongitudinalPersonality.schema.enumerants
 SET_SPEED_START_OPTIONS = ["default", "my speed", "my speed +5", "my speed +10"]
+TORQUE_BAR_HEIGHT_OPTIONS = ["default", "compact"]
 
 
 class ExperimentalModeConfirmPage(NavScroller):
@@ -55,6 +56,7 @@ class TogglesLayoutMici(NavScroller):
     hide_steering_wheel_icon = BigParamControl("hide steering wheel", "HideSteeringWheelIcon")
     show_stop_indicator = BigParamControl("show planned stop", "ShowStopIndicator")
     self._set_speed_start = BigMultiParamToggle("set speed start", "SetSpeedStart", SET_SPEED_START_OPTIONS)
+    self._torque_bar_height = BigMultiParamToggle("torque bar height", "TorqueBarHeight", TORQUE_BAR_HEIGHT_OPTIONS)
 
     self._scroller.add_widgets([
       self._personality_toggle,
@@ -69,6 +71,7 @@ class TogglesLayoutMici(NavScroller):
       hide_steering_wheel_icon,
       show_stop_indicator,
       self._set_speed_start,
+      self._torque_bar_height,
     ])
 
     # Toggle lists
@@ -129,6 +132,8 @@ class TogglesLayoutMici(NavScroller):
     set_speed_start = min(ui_state.params.get("SetSpeedStart", return_default=True) or 0, len(SET_SPEED_START_OPTIONS) - 1)
     self._set_speed_start.set_value(SET_SPEED_START_OPTIONS[set_speed_start])
     self._set_speed_start.set_visible(ui_state.has_longitudinal_control)
+    torque_bar_height = min(ui_state.params.get("TorqueBarHeight", return_default=True) or 0, len(TORQUE_BAR_HEIGHT_OPTIONS) - 1)
+    self._torque_bar_height.set_value(TORQUE_BAR_HEIGHT_OPTIONS[torque_bar_height])
 
   def _on_experimental_mode(self, state: bool):
     if state and not ui_state.params.get_bool("ExperimentalModeConfirmed"):

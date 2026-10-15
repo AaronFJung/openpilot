@@ -38,6 +38,16 @@ sections:
       alerts. comma four only.
     visibility:
     - {type: capability, field: device_type, equals: mici}
+  - key: TorqueBarHeight
+    widget: multiple_button
+    title: Torque Bar Height
+    description: Height of the curved steering torque bar at the bottom of the driving screen. Compact is three quarters of
+      the default height and grows only half as much under heavy steering. The length does not change.
+    options:
+    - value: 0
+      label: Default
+    - value: 1
+      label: Compact
   - key: ShowStopIndicator
     widget: toggle
     title: Show Planned Stop Distance
