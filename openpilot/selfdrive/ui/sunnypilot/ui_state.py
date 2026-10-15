@@ -51,6 +51,7 @@ class UIStateSP:
     self.developer_ui = None
     self.hide_confidence_ball: bool = False
     self.hide_steering_wheel_icon: bool = False
+    self.show_stop_indicator: bool = False
     self.hide_v_ego_ui: bool = False
     self.onroad_brightness: int = 0
     self.onroad_brightness_timer: int = 0
@@ -167,6 +168,7 @@ class UIStateSP:
     self.developer_ui = self.params.get("DevUIInfo")
     self.hide_confidence_ball = self.params.get_bool("HideConfidenceBall")
     self.hide_steering_wheel_icon = self.params.get_bool("HideSteeringWheelIcon")
+    self.show_stop_indicator = self.params.get_bool("ShowStopIndicator")
     self.hide_v_ego_ui = self.params.get_bool("HideVEgoUI")
     self.onroad_brightness = int(float(self.params.get("OnroadScreenOffBrightness", return_default=True)))
     self.onroad_brightness_timer_param = self.params.get("OnroadScreenOffTimer", return_default=True)

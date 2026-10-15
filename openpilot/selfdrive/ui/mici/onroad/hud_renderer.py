@@ -3,6 +3,7 @@ import pyray as rl
 from dataclasses import dataclass
 from openpilot.common.constants import CV
 from openpilot.selfdrive.ui.mici.onroad.torque_bar import TorqueBar
+from openpilot.selfdrive.ui.sunnypilot.mici.onroad.stop_indicator import PlannedStop, stop_distance_text
 from openpilot.selfdrive.ui.ui_state import ui_state, UIStatus, ChestnutState
 from openpilot.system.ui.lib.application import gui_app, FontWeight
 from openpilot.system.ui.lib.multilang import tr
@@ -131,6 +132,8 @@ class HudRenderer(Widget):
     self._wheel_y_filter = FirstOrderFilter(0, 0.1, 1 / gui_app.target_fps)
 
     self._set_speed_alpha_filter = FirstOrderFilter(0.0, 0.1, 1 / gui_app.target_fps)
+    self._planned_stop = PlannedStop()
+    self._badge_stop_distance: float | None = None
     self._chestnut_alpha_filter = FirstOrderFilter(0.0, 0.1, 1 / gui_app.target_fps)
 
   def set_wheel_critical_icon(self, critical: bool):
@@ -264,7 +267,11 @@ class HudRenderer(Widget):
 
   def _draw_set_speed(self, rect: rl.Rectangle) -> None:
     """Draw the MAX speed indicator box."""
-    alpha = self._set_speed_alpha_filter.update(0 < rl.get_time() - self._set_speed_changed_time < SET_SPEED_PERSISTENCE and
+    show_max = 0 < rl.get_time() - self._set_speed_changed_time < SET_SPEED_PERSISTENCE
+    stop_distance = None if show_max else self._planned_stop.update()
+    if show_max or stop_distance is not None:
+      self._badge_stop_distance = stop_distance  # keep the last content while fading out
+    alpha = self._set_speed_alpha_filter.update((show_max or stop_distance is not None) and
                                                 self._can_draw_top_icons and self._engaged)
     if alpha < 1e-2:
       return
@@ -285,6 +292,8 @@ class HudRenderer(Widget):
       set_speed *= KM_TO_MILE
 
     set_speed_text = CRUISE_DISABLED_CHAR if not self.is_cruise_set else str(round(set_speed))
+    if self._badge_stop_distance is not None:
+      set_speed_text = stop_distance_text(self._badge_stop_distance)
     rl.draw_text_ex(
       self._font_display,
       set_speed_text,
@@ -294,7 +303,7 @@ class HudRenderer(Widget):
       set_speed_color,
     )
 
-    max_text = tr("MAX")
+    max_text = tr("MAX") if self._badge_stop_distance is None else "STOP"
     rl.draw_text_ex(
       self._font_semi_bold,
       max_text,

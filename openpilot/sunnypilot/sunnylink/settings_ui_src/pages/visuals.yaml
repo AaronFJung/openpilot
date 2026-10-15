@@ -38,6 +38,13 @@ sections:
       alerts. comma four only.
     visibility:
     - {type: capability, field: device_type, equals: mici}
+  - key: ShowStopIndicator
+    widget: toggle
+    title: Show Planned Stop Distance
+    description: Show the distance with STOP in the set speed badge when the driving model plans to stop within 10 seconds. Only
+      while sunnypilot is controlling gas and brake in experimental mode. A heads up, not a guarantee. comma four only.
+    visibility:
+    - {type: capability, field: device_type, equals: mici}
   - key: RoadNameToggle
     widget: toggle
     title: Display Road Name

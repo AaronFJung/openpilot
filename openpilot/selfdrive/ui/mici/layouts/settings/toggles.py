@@ -52,6 +52,7 @@ class TogglesLayoutMici(NavScroller):
     enable_openpilot = BigParamControl("enable sunnypilot", "OpenpilotEnabledToggle", toggle_callback=restart_needed_callback)
     hide_confidence_ball = BigParamControl("hide confidence ball", "HideConfidenceBall")
     hide_steering_wheel_icon = BigParamControl("hide steering wheel", "HideSteeringWheelIcon")
+    show_stop_indicator = BigParamControl("show planned stop", "ShowStopIndicator")
 
     self._scroller.add_widgets([
       self._personality_toggle,
@@ -64,6 +65,7 @@ class TogglesLayoutMici(NavScroller):
       enable_openpilot,
       hide_confidence_ball,
       hide_steering_wheel_icon,
+      show_stop_indicator,
     ])
 
     # Toggle lists
@@ -77,6 +79,7 @@ class TogglesLayoutMici(NavScroller):
       ("OpenpilotEnabledToggle", enable_openpilot),
       ("HideConfidenceBall", hide_confidence_ball),
       ("HideSteeringWheelIcon", hide_steering_wheel_icon),
+      ("ShowStopIndicator", show_stop_indicator),
     )
 
     enable_openpilot.set_enabled(lambda: not ui_state.engaged)
