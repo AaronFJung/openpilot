@@ -1,0 +1,34 @@
+name: "Copilot Setup Steps"
+
+# Prepares the Copilot cloud agent's machine with the same setup a developer
+# uses (tools/op.sh setup, then scons), so Copilot can lint, build and run tests.
+# GitHub requires this exact file name and job name. Runs only from the default branch.
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+  pull_request:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+
+jobs:
+  copilot-setup-steps:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 59
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+          lfs: false  # LFS files live on sunnypilot's GitLab server (.lfsconfig); op.sh setup pulls them from there
+
+      - name: Install dependencies (tools/op.sh setup)
+        run: ./tools/op.sh setup
+
+      - name: Build (scons)
+        run: |
+          source .venv/bin/activate
+          scons -j"$(nproc)"

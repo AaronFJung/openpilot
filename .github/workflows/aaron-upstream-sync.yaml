@@ -1,0 +1,204 @@
+name: "aaron: upstream sync"
+
+# Nightly job for this fork. See aaron_README.md.
+#
+# Your driving branch is this repo's DEFAULT branch and must be named
+# aaron-ui-<MVL branch>, for example aaron-ui-sp-honda-dev-202608.
+# The MVL branch to follow is derived from that name, so switching to a
+# new MVL branch later only means changing the default branch.
+#
+# 1. If MVL pushed new commits, merge them into sync/<MVL branch> and open
+#    (or refresh) a PR into your driving branch. Nothing reaches the car
+#    until you merge that PR.
+# 2. If the merge conflicts, open an issue. Issues opened with the
+#    AUTOMATION_PAT are authored by you, so aaron-copilot-autoassign.yaml
+#    hands them to Copilot.
+# 3. If MVL starts a newer sp-honda-dev-YYYYMM branch, create
+#    aaron-ui-<new branch> from it, try to cherry pick your commits onto it,
+#    and open an issue (plus a PR when the cherry pick is clean).
+
+on:
+  schedule:
+    - cron: '17 9 * * *'  # 09:17 UTC: 4:17 AM Chicago in summer, 3:17 AM in winter
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aaron-upstream-sync
+  cancel-in-progress: false
+
+env:
+  UPSTREAM_REPO: mvl-boston/openpilot
+  BRANCH_PREFIX: aaron-ui-
+  UPSTREAM_PATTERN: '^sp-honda-dev-[0-9]{6}$'
+
+jobs:
+  sync:
+    if: github.repository_owner != 'mvl-boston'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ secrets.AUTOMATION_PAT }}
+      GH_REPO: ${{ github.repository }}
+      MY_BRANCH: ${{ github.event.repository.default_branch }}
+    steps:
+      - name: Check setup
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::Missing repo secret AUTOMATION_PAT. See aaron_README.md."
+            exit 1
+          fi
+          case "$MY_BRANCH" in
+            "$BRANCH_PREFIX"*) ;;
+            *) echo "::error::Default branch '$MY_BRANCH' must start with '$BRANCH_PREFIX'."; exit 1 ;;
+          esac
+          echo "UPSTREAM_BRANCH=${MY_BRANCH#"$BRANCH_PREFIX"}" >> "$GITHUB_ENV"
+
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ env.MY_BRANCH }}
+          fetch-depth: 0
+          filter: blob:none
+          lfs: false
+          submodules: false
+          token: ${{ secrets.AUTOMATION_PAT }}
+
+      - name: Prepare git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add upstream "https://github.com/$UPSTREAM_REPO.git"
+          git fetch --no-tags --filter=blob:none upstream \
+            "+refs/heads/$UPSTREAM_BRANCH:refs/remotes/upstream/$UPSTREAM_BRANCH"
+          for l in "upstream-sync:0e8a16:Nightly merge of MVL's branch" \
+                   "upstream-conflict:d93f0b:Nightly merge hit conflicts" \
+                   "upstream-new-branch:5319e7:MVL started a new branch" \
+                   "copilot:1d76db:Hand this issue to Copilot" \
+                   "no-copilot:cccccc:Keep Copilot off this issue"; do
+            IFS=: read -r name color desc <<< "$l"
+            gh label create "$name" --color "$color" --description "$desc" --force >/dev/null
+          done
+
+      - name: Watch for a newer MVL branch
+        run: |
+          newest=$(git ls-remote --heads upstream | awk '{sub("refs/heads/", "", $2); print $2}' \
+                   | grep -E "$UPSTREAM_PATTERN" | sort | tail -n 1)
+          echo "Following $UPSTREAM_BRANCH, newest MVL branch is ${newest:-none}"
+          if [ -z "$newest" ] || [[ ! "$newest" > "$UPSTREAM_BRANCH" ]]; then
+            exit 0
+          fi
+          existing=$(gh issue list --state all --label upstream-new-branch --search "$newest in:title" --json number --jq 'length')
+          if [ "$existing" != "0" ]; then
+            echo "Issue for $newest already exists."
+            exit 0
+          fi
+
+          new_branch="${BRANCH_PREFIX}${newest}"
+          git fetch --no-tags --filter=blob:none upstream "+refs/heads/$newest:refs/remotes/upstream/$newest"
+          git push --force origin "refs/remotes/upstream/$newest:refs/heads/mirror/$newest"
+          if ! git ls-remote --exit-code --heads origin "$new_branch" >/dev/null; then
+            git push origin "refs/remotes/upstream/$newest:refs/heads/$new_branch"
+          fi
+
+          # Your own commits: everything on your branch that is not MVL's, minus merge commits.
+          mine=$(git rev-list --reverse --no-merges "upstream/$UPSTREAM_BRANCH..origin/$MY_BRANCH")
+          list=$(git log --no-merges --format='* %h %s' "upstream/$UPSTREAM_BRANCH..origin/$MY_BRANCH")
+          git checkout -B "port/$newest" "upstream/$newest"
+          # shellcheck disable=SC2086  # $mine is a list of commit hashes, split on purpose
+          if [ -n "$mine" ] && git cherry-pick -x $mine; then
+            git push --force origin "port/$newest"
+            pr=$(gh pr create --base "$new_branch" --head "port/$newest" \
+                   --title "Port my features to $newest" \
+                   --body "Your commits cherry picked cleanly onto MVL's \`$newest\`. Check that \`settings_ui.json\` is still in sync (CI runs the compiler check), test on the device, then merge and make \`$new_branch\` the default branch.")
+            labels="upstream-new-branch,no-copilot"
+            status="Your commits cherry picked cleanly. Review $pr."
+          else
+            git cherry-pick --abort 2>/dev/null || true
+            labels="upstream-new-branch"
+            status="The automatic cherry pick hit conflicts, so this issue is for Copilot."
+          fi
+
+          body=$(cat <<EOF
+          <!-- copilot-base: $new_branch -->
+          MVL started \`$newest\`. You currently follow \`$UPSTREAM_BRANCH\`.
+
+          $status
+
+          The branch \`$new_branch\` was created from MVL's \`$newest\`, and \`mirror/$newest\` is an exact copy of MVL's branch.
+
+          **Task (for Copilot):** port this fork's own commits onto \`$new_branch\`. They are:
+
+          $list
+
+          1. Start from \`$new_branch\` and cherry pick each commit above in order, resolving conflicts.
+          2. Read .github/copilot-instructions.md first (it lists this fork's own files). MVL's code wins everywhere except the fork's own features.
+          3. If \`openpilot/sunnypilot/sunnylink/settings_ui.json\` conflicts, take MVL's version, re-apply the YAML changes, then run \`python openpilot/sunnypilot/sunnylink/tools/compile_settings_ui.py\`.
+          4. Do not change anything safety related.
+
+          **After merging:** install \`installer.comma.ai/<you>/$new_branch\` or change the device's branch, then set \`$new_branch\` as this repo's default branch so nightly sync follows it.
+          EOF
+          )
+          gh issue create --title "MVL started $newest: port my features" --label "$labels" --body "$body"
+
+      - name: Merge MVL's latest into the sync branch
+        run: |
+          git checkout --quiet "$MY_BRANCH"
+          up="upstream/$UPSTREAM_BRANCH"
+          short=$(git rev-parse --short "$up")
+          if git merge-base --is-ancestor "$up" HEAD; then
+            echo "Already contains MVL's $UPSTREAM_BRANCH at $short."
+            exit 0
+          fi
+          git push --force origin "refs/remotes/$up:refs/heads/mirror/$UPSTREAM_BRANCH"
+
+          sync="sync/$UPSTREAM_BRANCH"
+          git checkout -B "$sync" "origin/$MY_BRANCH"
+          new_commits=$(git log --format='* %h %s' "HEAD..$up" | head -n 50)
+          if git merge --no-ff --no-edit -m "Merge MVL $UPSTREAM_BRANCH at $short" "$up"; then
+            git push --force origin "$sync"
+            pr=$(gh pr list --head "$sync" --base "$MY_BRANCH" --state open --json number --jq '.[0].number // empty')
+            if [ -z "$pr" ]; then
+              body=$(cat <<EOF
+          MVL pushed new commits to \`$UPSTREAM_BRANCH\`. This PR merges them into \`$MY_BRANCH\`.
+
+          **Merging deploys to your car** the next time it updates from \`$MY_BRANCH\`. Wait for the tests check to pass first.
+
+          New MVL commits:
+          $new_commits
+          EOF
+              )
+              gh pr create --base "$MY_BRANCH" --head "$sync" --label upstream-sync \
+                --title "Sync MVL $UPSTREAM_BRANCH ($short)" --body "$body"
+            else
+              gh pr edit "$pr" --title "Sync MVL $UPSTREAM_BRANCH ($short)"
+              gh pr comment "$pr" --body "Refreshed to MVL \`$short\`."
+            fi
+            exit 0
+          fi
+
+          # shellcheck disable=SC2016  # literal backticks for markdown
+          conflicts=$(git diff --name-only --diff-filter=U | sed 's/^/* `/; s/$/`/')
+          git merge --abort
+          open=$(gh issue list --state open --label upstream-conflict --json number --jq '.[0].number // empty')
+          if [ -n "$open" ]; then
+            gh issue comment "$open" --body "Still conflicting as of MVL \`$short\`. Conflicting files:
+          $conflicts"
+            exit 0
+          fi
+          body=$(cat <<EOF
+          <!-- copilot-base: $MY_BRANCH -->
+          The nightly merge of MVL's \`$UPSTREAM_BRANCH\` (\`$short\`) into \`$MY_BRANCH\` has conflicts.
+
+          Conflicting files:
+          $conflicts
+
+          **Task (for Copilot):**
+          1. Read .github/copilot-instructions.md first (it lists this fork's own files).
+          2. Merge branch \`mirror/$UPSTREAM_BRANCH\` (an exact copy of MVL's branch) into \`$MY_BRANCH\` and resolve the conflicts. MVL's code wins everywhere except the fork's own features, which must keep working.
+          3. If \`openpilot/sunnypilot/sunnylink/settings_ui.json\` conflicts, take MVL's version, keep the fork's YAML entries, then run \`python openpilot/sunnypilot/sunnylink/tools/compile_settings_ui.py\`.
+          4. Do not change anything safety related.
+          EOF
+          )
+          gh issue create --title "Nightly MVL merge conflicts ($short)" --label upstream-conflict --body "$body"

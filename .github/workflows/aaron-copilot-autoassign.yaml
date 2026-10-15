@@ -1,0 +1,53 @@
+name: "aaron: hand issues to Copilot"
+
+# Assigns the Copilot cloud agent to:
+#   * issues you (the repo owner) open, including ones the nightly sync opens with your AUTOMATION_PAT
+#   * anyone else's issue once you add the "copilot" label
+# Add the "no-copilot" label when opening an issue to keep Copilot off it.
+# Copilot opens a draft PR; nothing merges without you. See aaron_README.md.
+
+on:
+  issues:
+    types: [opened, labeled]
+
+permissions:
+  contents: read
+
+jobs:
+  assign:
+    if: >-
+      github.repository_owner != 'mvl-boston' &&
+      !contains(github.event.issue.labels.*.name, 'no-copilot') &&
+      (
+        (github.event.action == 'opened' && github.event.issue.user.login == github.repository_owner) ||
+        (github.event.action == 'labeled' && github.event.label.name == 'copilot' &&
+         github.event.issue.user.login != github.repository_owner)
+      )
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ secrets.AUTOMATION_PAT }}
+      REPO: ${{ github.repository }}
+      ISSUE: ${{ github.event.issue.number }}
+      BODY: ${{ github.event.issue.body }}
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+    steps:
+      - name: Assign Copilot
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::Missing repo secret AUTOMATION_PAT. See aaron_README.md."
+            exit 1
+          fi
+          base=$(printf '%s' "$BODY" | grep -oP '(?<=<!-- copilot-base: )[^ ]+' | head -n 1 || true)
+          base=${base:-$DEFAULT_BRANCH}
+          instructions="Follow .github/copilot-instructions.md, which also lists this fork's own files. Never modify safety related code: panda safety, opendbc safety, driver monitoring, steering or braking limits. Keep the diff minimal so it rebases cleanly onto MVL's branches."
+          echo "Assigning Copilot to #$ISSUE with base branch $base"
+          jq -n --arg base "$base" --arg instr "$instructions" \
+            '{assignees: ["copilot-swe-agent[bot]"], agent_assignment: {base_branch: $base, custom_instructions: $instr}}' \
+            | gh api --method POST "repos/$REPO/issues/$ISSUE/assignees" --input - > response.json
+          if ! jq -e '[.assignees[].login | ascii_downcase] | any(test("copilot"))' response.json >/dev/null; then
+            echo "::error::GitHub accepted the request but Copilot is not assigned. Check that your Copilot plan includes the cloud agent and that it is enabled for this repo."
+            jq '.assignees' response.json
+            exit 1
+          fi
+          echo "Copilot assigned."
