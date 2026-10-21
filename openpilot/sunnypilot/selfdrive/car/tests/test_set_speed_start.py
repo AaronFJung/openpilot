@@ -37,7 +37,7 @@ class TestSetSpeedStart(OpenpilotTestCase):
     assert round(self.set_at(45, 2, experimental=False) * CV.KPH_TO_MPH) == 50
 
 
-class TestPlannedStopDistance:
+class TestPlannedStopDistance(OpenpilotTestCase):
   def test_no_stop_planned(self):
     assert planned_stop_distance([10., 10., 10.], [0., 10., 20.], 10.) is None
 

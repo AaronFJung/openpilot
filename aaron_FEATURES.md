@@ -29,3 +29,15 @@ Chooses what your cruise speed becomes when you press SET. Default keeps the sto
 ## Torque Bar Height
 
 Makes the curved steering bar at the bottom of the driving screen shorter in height. Default is the normal size. Compact is three quarters as tall and grows only half as much when steering hard. The bar stays the same length.
+
+## Hide Torque Bar
+
+Removes the curved steering bar from the bottom of the driving screen completely. It overrides Torque Bar Height while it's on. comma four only.
+
+## Hide Driver Monitoring Icon
+
+Removes the face icon in the top left that shows where you're looking. Driver monitoring itself keeps running, and its attention warnings and alerts still show and sound exactly as before. comma four only.
+
+## Auto Brightness Offset
+
+Nudges the automatic screen brightness while driving, from 20% darker to 20% brighter in 5% steps. It never goes below 10% or above 100%. It only applies in the Auto brightness modes; the fixed brightness choices and parked brightness are unchanged. In sunnylink it's under Display.

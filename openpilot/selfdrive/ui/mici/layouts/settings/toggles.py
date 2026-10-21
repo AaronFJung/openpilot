@@ -3,7 +3,7 @@ from collections.abc import Callable
 from openpilot.cereal import log
 
 from openpilot.system.ui.widgets.scroller import NavScroller
-from openpilot.selfdrive.ui.mici.widgets.button import BigParamControl, BigMultiParamToggle, BigToggle, GreyBigButton
+from openpilot.selfdrive.ui.mici.widgets.button import BigParamControl, BigMultiParamToggle, BigMultiToggle, BigToggle, GreyBigButton
 from openpilot.selfdrive.ui.mici.widgets.dialog import BigConfirmationCircleButton
 from openpilot.system.ui.lib.application import gui_app
 from openpilot.selfdrive.ui.layouts.settings.common import restart_needed_callback
@@ -12,6 +12,7 @@ from openpilot.selfdrive.ui.ui_state import ui_state
 PERSONALITY_TO_INT = log.LongitudinalPersonality.schema.enumerants
 SET_SPEED_START_OPTIONS = ["default", "my speed", "my speed +5", "my speed +10"]
 TORQUE_BAR_HEIGHT_OPTIONS = ["default", "compact"]
+BRIGHTNESS_OFFSETS = [-20, -15, -10, -5, 0, 5, 10, 15, 20]
 
 
 class ExperimentalModeConfirmPage(NavScroller):
@@ -57,6 +58,10 @@ class TogglesLayoutMici(NavScroller):
     show_stop_indicator = BigParamControl("show planned stop", "ShowStopIndicator")
     self._set_speed_start = BigMultiParamToggle("set speed start", "SetSpeedStart", SET_SPEED_START_OPTIONS)
     self._torque_bar_height = BigMultiParamToggle("torque bar height", "TorqueBarHeight", TORQUE_BAR_HEIGHT_OPTIONS)
+    hide_torque_bar = BigParamControl("hide torque bar", "HideTorqueBar")
+    hide_driver_monitor_icon = BigParamControl("hide driver icon", "HideDriverMonitorIcon")
+    self._brightness_offset = BigMultiToggle("auto brightness offset", [f"{o:+d}%" if o else "0%" for o in BRIGHTNESS_OFFSETS],
+                                             select_callback=self._on_brightness_offset)
 
     self._scroller.add_widgets([
       self._personality_toggle,
@@ -72,6 +77,9 @@ class TogglesLayoutMici(NavScroller):
       show_stop_indicator,
       self._set_speed_start,
       self._torque_bar_height,
+      hide_torque_bar,
+      hide_driver_monitor_icon,
+      self._brightness_offset,
     ])
 
     # Toggle lists
@@ -86,6 +94,8 @@ class TogglesLayoutMici(NavScroller):
       ("HideConfidenceBall", hide_confidence_ball),
       ("HideSteeringWheelIcon", hide_steering_wheel_icon),
       ("ShowStopIndicator", show_stop_indicator),
+      ("HideTorqueBar", hide_torque_bar),
+      ("HideDriverMonitorIcon", hide_driver_monitor_icon),
     )
 
     enable_openpilot.set_enabled(lambda: not ui_state.engaged)
@@ -134,6 +144,12 @@ class TogglesLayoutMici(NavScroller):
     self._set_speed_start.set_visible(ui_state.has_longitudinal_control)
     torque_bar_height = min(ui_state.params.get("TorqueBarHeight", return_default=True) or 0, len(TORQUE_BAR_HEIGHT_OPTIONS) - 1)
     self._torque_bar_height.set_value(TORQUE_BAR_HEIGHT_OPTIONS[torque_bar_height])
+    offset = ui_state.params.get("AutoBrightnessOffset", return_default=True) or 0
+    offset = min(BRIGHTNESS_OFFSETS, key=lambda o: abs(o - offset))
+    self._brightness_offset.set_value(self._brightness_offset._options[BRIGHTNESS_OFFSETS.index(offset)])
+
+  def _on_brightness_offset(self, value: str):
+    ui_state.params.put("AutoBrightnessOffset", BRIGHTNESS_OFFSETS[self._brightness_offset._options.index(value)])
 
   def _on_experimental_mode(self, state: bool):
     if state and not ui_state.params.get_bool("ExperimentalModeConfirmed"):

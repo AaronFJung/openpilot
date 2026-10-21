@@ -48,6 +48,19 @@ sections:
       label: Default
     - value: 1
       label: Compact
+  - key: HideTorqueBar
+    widget: toggle
+    title: Hide Torque Bar
+    description: Remove the curved steering torque bar from the bottom of the driving screen. comma four only.
+    visibility:
+    - {type: capability, field: device_type, equals: mici}
+  - key: HideDriverMonitorIcon
+    widget: toggle
+    title: Hide Driver Monitoring Icon
+    description: Remove the face icon that shows where the driver is looking. Driver attention warnings and alerts still
+      work normally. comma four only.
+    visibility:
+    - {type: capability, field: device_type, equals: mici}
   - key: ShowStopIndicator
     widget: toggle
     title: Show Planned Stop Distance

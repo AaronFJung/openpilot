@@ -183,7 +183,8 @@ class HudRenderer(Widget):
   def _render(self, rect: rl.Rectangle) -> None:
     """Render HUD elements to the screen."""
 
-    self._torque_bar.render(rect)
+    if not ui_state.hide_torque_bar:
+      self._torque_bar.render(rect)
 
     if self.is_cruise_set:
       self._draw_set_speed(rect)

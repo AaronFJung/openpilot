@@ -1206,6 +1206,16 @@
               ]
             },
             {
+              "key": "AutoBrightnessOffset",
+              "widget": "option",
+              "title": "Auto Brightness Offset",
+              "description": "Nudge automatic screen brightness up or down while driving, in 5% steps. Only applies in the Auto brightness modes. Never goes below 10%.",
+              "min": -20,
+              "max": 20,
+              "step": 5,
+              "unit": "%"
+            },
+            {
               "key": "OnroadScreenOffTimer",
               "widget": "multiple_button",
               "title": "Onroad Brightness Delay",
@@ -1467,6 +1477,32 @@
                 {
                   "value": 1,
                   "label": "Compact"
+                }
+              ]
+            },
+            {
+              "key": "HideTorqueBar",
+              "widget": "toggle",
+              "title": "Hide Torque Bar",
+              "description": "Remove the curved steering torque bar from the bottom of the driving screen. comma four only.",
+              "visibility": [
+                {
+                  "type": "capability",
+                  "field": "device_type",
+                  "equals": "mici"
+                }
+              ]
+            },
+            {
+              "key": "HideDriverMonitorIcon",
+              "widget": "toggle",
+              "title": "Hide Driver Monitoring Icon",
+              "description": "Remove the face icon that shows where the driver is looking. Driver attention warnings and alerts still work normally. comma four only.",
+              "visibility": [
+                {
+                  "type": "capability",
+                  "field": "device_type",
+                  "equals": "mici"
                 }
               ]
             },

@@ -53,6 +53,9 @@ class UIStateSP:
     self.hide_steering_wheel_icon: bool = False
     self.show_stop_indicator: bool = False
     self.torque_bar_height: int = 0
+    self.hide_torque_bar: bool = False
+    self.hide_driver_monitor_icon: bool = False
+    self.auto_brightness_offset: int = 0
     self.hide_v_ego_ui: bool = False
     self.onroad_brightness: int = 0
     self.onroad_brightness_timer: int = 0
@@ -171,6 +174,9 @@ class UIStateSP:
     self.hide_steering_wheel_icon = self.params.get_bool("HideSteeringWheelIcon")
     self.show_stop_indicator = self.params.get_bool("ShowStopIndicator")
     self.torque_bar_height = self.params.get("TorqueBarHeight", return_default=True)
+    self.hide_torque_bar = self.params.get_bool("HideTorqueBar")
+    self.hide_driver_monitor_icon = self.params.get_bool("HideDriverMonitorIcon")
+    self.auto_brightness_offset = self.params.get("AutoBrightnessOffset", return_default=True)
     self.hide_v_ego_ui = self.params.get_bool("HideVEgoUI")
     self.onroad_brightness = int(float(self.params.get("OnroadScreenOffBrightness", return_default=True)))
     self.onroad_brightness_timer_param = self.params.get("OnroadScreenOffTimer", return_default=True)
@@ -298,6 +304,14 @@ class DeviceSP:
 
     # 3-22: 5% - 100%
     return float((_ui_state.onroad_brightness - 2) * 5)
+
+  @staticmethod
+  def apply_brightness_offset(_ui_state, brightness: float) -> float:
+    # AutoBrightnessOffset: user nudge in percent (-20..+20), never below 10% or above 100%
+    offset = _ui_state.auto_brightness_offset or 0
+    if offset == 0:
+      return brightness
+    return float(min(max(brightness + offset, 10), 100))
 
   @staticmethod
   def set_min_onroad_brightness(_ui_state, min_brightness: int) -> int:

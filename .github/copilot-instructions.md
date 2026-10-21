@@ -33,15 +33,17 @@ Explain what changed and why, list the checks you ran, and add an on device test
 
 Files this fork changes or adds on top of MVL's branch. Keep this list current.
 
-* `openpilot/common/params_keys.h` (HideConfidenceBall, HideSteeringWheelIcon, ShowStopIndicator, SetSpeedStart, TorqueBarHeight)
+* `openpilot/common/params_keys.h` (HideConfidenceBall, HideSteeringWheelIcon, ShowStopIndicator, SetSpeedStart, TorqueBarHeight, HideTorqueBar,
+  HideDriverMonitorIcon, AutoBrightnessOffset)
 * `openpilot/selfdrive/ui/sunnypilot/ui_state.py`
 * `openpilot/selfdrive/ui/mici/layouts/settings/toggles.py`
 * `openpilot/selfdrive/ui/mici/onroad/augmented_road_view.py`
 * `openpilot/selfdrive/ui/mici/onroad/hud_renderer.py`
 * `openpilot/selfdrive/ui/mici/onroad/torque_bar.py`
+* `openpilot/selfdrive/ui/ui_state.py` (one hook for AutoBrightnessOffset)
 * `openpilot/selfdrive/ui/sunnypilot/mici/onroad/stop_indicator.py` (new)
 * `openpilot/selfdrive/car/cruise.py` (one branch in `initialize_v_cruise`)
 * `openpilot/sunnypilot/selfdrive/car/cruise_ext.py`
-* `openpilot/sunnypilot/selfdrive/car/tests/test_set_speed_start.py` (new)
-* `openpilot/sunnypilot/sunnylink/settings_ui_src/pages/visuals.yaml`, `cruise.yaml` and the generated `settings_ui.json`
+* `openpilot/sunnypilot/selfdrive/car/tests/test_set_speed_start.py` and `test_brightness_offset.py` (new)
+* `openpilot/sunnypilot/sunnylink/settings_ui_src/pages/visuals.yaml`, `cruise.yaml`, `display.yaml` and the generated `settings_ui.json`
 * `.github/workflows/aaron-*.yaml`, `.github/workflows/copilot-setup-steps.yml`, this file, and the `aaron_*.md` docs
