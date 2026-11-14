@@ -201,17 +201,13 @@ class TestSpuriousOffroadGatesDropped(OpenpilotTestCase):
     assert item is not None
     assert "offroad_only" not in _flatten_rule_types(item.get("enablement"))
 
-  def test_dynamic_experimental_has_no_offroad_only(self, schema):
-    item = _find_item(schema, "DynamicExperimentalControl")
-    assert item is not None
-    assert "offroad_only" not in _flatten_rule_types(item.get("enablement"))
-
 
 class TestNotEngagedReplacement(OpenpilotTestCase):
   @parameterized.expand([
     "AlphaLongitudinalEnabled",
     "ToyotaEnforceStockLongitudinal",
     "ToyotaStopAndGoHack",
+    "ToyotaTSS2Smooth",
   ], names=["key"])
   def test_offroad_only_replaced_with_not_engaged(self, schema, key):
     """These items should use not_engaged, not offroad_only."""
@@ -220,3 +216,12 @@ class TestNotEngagedReplacement(OpenpilotTestCase):
     rule_types = _flatten_rule_types(item.get("enablement"))
     assert "offroad_only" not in rule_types, f"{key} still uses offroad_only"
     assert "not_engaged" in rule_types, f"{key} missing not_engaged"
+
+
+class TestHondaNidecStockLongGates(OpenpilotTestCase):
+  def test_honda_enforce_stock_longitudinal_gated_on_nidec(self, schema):
+    item = _find_item(schema, "HondaEnforceStockLongitudinal")
+    assert item is not None, "HondaEnforceStockLongitudinal not found"
+    assert _references_capability_field(item.get("visibility"), "honda_nidec"), (
+      "HondaEnforceStockLongitudinal must be visible only on Honda Nidec"
+    )

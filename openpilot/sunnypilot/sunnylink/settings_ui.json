@@ -559,7 +559,7 @@
               "enablement": [
                 {
                   "type": "capability",
-                  "field": "enable_bsm",
+                  "field": "has_bsm",
                   "equals": true
                 },
                 {
@@ -587,38 +587,6 @@
           "title": "",
           "description": "",
           "items": [
-            {
-              "key": "ExperimentalMode",
-              "widget": "toggle",
-              "title": "Experimental Mode",
-              "enablement": [
-                {
-                  "type": "capability",
-                  "field": "has_longitudinal_control",
-                  "equals": true
-                }
-              ]
-            },
-            {
-              "key": "DynamicExperimentalControl",
-              "widget": "toggle",
-              "title": "Dynamic Experimental Control",
-              "description": "Let the model decide when to use sunnypilot ACC or sunnypilot End to End Longitudinal.",
-              "visibility": [
-                {
-                  "type": "capability",
-                  "field": "has_longitudinal_control",
-                  "equals": true
-                }
-              ],
-              "enablement": [
-                {
-                  "type": "capability",
-                  "field": "has_longitudinal_control",
-                  "equals": true
-                }
-              ]
-            },
             {
               "key": "DisengageOnAccelerator",
               "widget": "toggle",
@@ -688,6 +656,19 @@
                     "field": "pcm_cruise",
                     "equals": true
                   }
+                }
+              ]
+            },
+            {
+              "key": "AccelBoostSP",
+              "widget": "toggle",
+              "title": "Acceleration Boost",
+              "description": "Adds a small push on top of sunnypilot's own acceleration, stronger in Aggressive and gentler in Relaxed. Eases off in curves and when sunnypilot slows or stops. Never goes past your set speed, and lead-car following still comes first.",
+              "enablement": [
+                {
+                  "type": "capability",
+                  "field": "has_longitudinal_control",
+                  "equals": true
                 }
               ]
             },
@@ -1430,7 +1411,17 @@
               "key": "TorqueBar",
               "widget": "toggle",
               "title": "Steering Arc",
-              "description": "Display steering arc on the driving screen when lateral control is enabled."
+              "description": "Display steering arc on the driving screen when lateral control is enabled.",
+              "visibility": [
+                {
+                  "type": "not",
+                  "condition": {
+                    "type": "capability",
+                    "field": "device_type",
+                    "equals": "mici"
+                  }
+                }
+              ]
             },
             {
               "key": "ShowTurnSignals",
@@ -1983,6 +1974,27 @@
               ]
             },
             {
+              "key": "NavigationEnabled",
+              "widget": "toggle",
+              "title": "Navigation (Alpha)",
+              "description": "Turn-by-turn navigation with a route map. Set a destination from comma connect.",
+              "visibility": [
+                {
+                  "type": "capability",
+                  "field": "device_type",
+                  "equals": "mici"
+                },
+                {
+                  "type": "not",
+                  "condition": {
+                    "type": "capability",
+                    "field": "is_sp_release",
+                    "equals": true
+                  }
+                }
+              ]
+            },
+            {
               "key": "ShowDebugInfo",
               "widget": "toggle",
               "title": "UI Debug Mode"
@@ -2158,7 +2170,14 @@
               "key": "LaneCentering",
               "widget": "toggle",
               "title": "SPLC (StarPilot Lane Centering)",
-              "description": "Experimentally bias the model command toward the detected lane center. Requires two confident lane lines and remains subject to normal curvature and jerk limits."
+              "description": "Experimentally bias the model command toward the detected lane center. Requires two confident lane lines and remains subject to normal curvature and jerk limits. Not available while Blendful is enabled.",
+              "enablement": [
+                {
+                  "type": "param",
+                  "key": "Blendful",
+                  "equals": false
+                }
+              ]
             },
             {
               "key": "LaneCenteringPauseOnSignal",
@@ -2166,6 +2185,11 @@
               "title": "SPLC Pause on Turn Signal",
               "description": "Fade the lane-centering correction out when a turn signal is active so it does not fight a lane change or turn.",
               "enablement": [
+                {
+                  "type": "param",
+                  "key": "Blendful",
+                  "equals": false
+                },
                 {
                   "type": "param",
                   "key": "LaneCentering",
@@ -2185,6 +2209,11 @@
               "enablement": [
                 {
                   "type": "param",
+                  "key": "Blendful",
+                  "equals": false
+                },
+                {
+                  "type": "param",
                   "key": "LaneCentering",
                   "equals": true
                 }
@@ -2199,6 +2228,11 @@
               "max": 1.0,
               "step": 0.05,
               "enablement": [
+                {
+                  "type": "param",
+                  "key": "Blendful",
+                  "equals": false
+                },
                 {
                   "type": "param",
                   "key": "LaneCentering",
@@ -2221,8 +2255,21 @@
         {
           "id": "model_behavior",
           "title": "Model Behavior",
-          "description": "Lane desire and lead-vehicle awareness tuning",
+          "description": "Lane desire, Blendful lane centering, and lead-vehicle awareness tuning",
           "items": [
+            {
+              "key": "Blendful",
+              "widget": "toggle",
+              "title": "Blendful (Alpha)",
+              "description": "Adds a gentle nudge toward lane center on top of the model's own steering, stronger when lane lines are clear. Yields around obstacles. Not available with the Default model.",
+              "enablement": [
+                {
+                  "type": "capability",
+                  "field": "custom_model_active",
+                  "equals": true
+                }
+              ]
+            },
             {
               "key": "LaneTurnDesire",
               "widget": "toggle",
@@ -2367,6 +2414,13 @@
           "needs_onroad_cycle": true,
           "title": "Honda Nidec: Enforce Factory Longitudinal Control",
           "description": "sunnypilot will not take over control of gas and brakes. Factory Honda Nidec longitudinal control will be used.",
+          "visibility": [
+            {
+              "type": "capability",
+              "field": "honda_nidec",
+              "equals": true
+            }
+          ],
           "enablement": [
             {
               "type": "not_engaged"
@@ -2540,6 +2594,33 @@
               "type": "param",
               "key": "ToyotaEnforceStockLongitudinal",
               "equals": false
+            }
+          ]
+        },
+        {
+          "key": "ToyotaTSS2Smooth",
+          "widget": "toggle",
+          "needs_onroad_cycle": true,
+          "title": "TSS2 Smooth Longitudinal (Alpha)",
+          "description": "Enable smoother longitudinal control for TSS2 vehicles. Uses a custom speed-dependent integral gain curve for smoother traffic driving.",
+          "enablement": [
+            {
+              "type": "not_engaged"
+            },
+            {
+              "type": "capability",
+              "field": "has_longitudinal_control",
+              "equals": true
+            },
+            {
+              "type": "param",
+              "key": "ToyotaEnforceStockLongitudinal",
+              "equals": false
+            },
+            {
+              "type": "capability",
+              "field": "toyota_tss2",
+              "equals": true
             }
           ]
         }

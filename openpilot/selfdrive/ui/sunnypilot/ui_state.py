@@ -7,7 +7,9 @@ See the LICENSE.md file in the root directory for more details.
 from enum import Enum
 
 from openpilot.cereal import messaging, log, custom
+from opendbc.car.honda.values import HondaFlags
 from opendbc.car.structs import car
+from opendbc.sunnypilot.car.interfaces import has_bsm
 from openpilot.common.params import Params
 from openpilot.selfdrive.ui.sunnypilot.layouts.settings.display import OnroadBrightness
 from openpilot.sunnypilot.models.helpers import ACTIVE_BUNDLE_KEYS, get_active_source
@@ -35,7 +37,7 @@ class UIStateSP:
     self.is_sp_release: bool = self.params.get_bool("IsReleaseSpBranch")
     self.sm_services_ext = [
       "modelManagerSP", "selfdriveStateSP", "longitudinalPlanSP", "backupManagerSP",
-      "gpsLocation", "lateralTorqueParameters", "carStateSP", "liveMapDataSP", "carParamsSP", "lateralDelay"
+      "lateralTorqueParameters", "carStateSP", "liveMapDataSP", "carParamsSP", "lateralDelay", "modelDataV2SP"
     ]
 
     self.sunnylink_state = SunnylinkState()
@@ -45,6 +47,7 @@ class UIStateSP:
 
     self.active_bundle = None
     self.model_runner_tinygrad: bool = False
+    self.active_runner_tinygrad: bool = False
     self.blindspot: bool = False
     self.chevron_metrics = None
     self.custom_interactive_timeout: int = 0
@@ -116,6 +119,14 @@ class UIStateSP:
     return self.onroad_brightness in (OnroadBrightness.AUTO, OnroadBrightness.AUTO_DARK)
 
   @staticmethod
+  def lateral_active(_ui_state) -> bool:
+    if _ui_state.sm.valid["selfdriveStateSP"]:
+      mads = _ui_state.sm["selfdriveStateSP"].mads
+      if mads.available:
+        return mads.enabled and mads.state != MADSState.paused
+    return _ui_state.status.value in ("engaged", "lat_only")
+
+  @staticmethod
   def update_status(ss, ss_sp, onroad_evt) -> str:
     state = ss.state
     mads = ss_sp.mads
@@ -163,6 +174,8 @@ class UIStateSP:
                                chestnut_loading=self.chestnut_loading, offroad=self.is_offroad())
     self.active_bundle = self.params.get(ACTIVE_BUNDLE_KEYS[source])
     self.model_runner_tinygrad = self.active_bundle is not None and self.active_bundle.get("runner") == "tinygrad"
+    # runner the manager launches (process_config.is_tinygrad_model); with a chestnut the big slot decides
+    self.active_runner_tinygrad = self.params.get("ModelRunnerTypeCache") == custom.ModelManagerSP.Runner.tinygrad
     # stock only counts the default big model's compiled pkl. a downloaded big bundle runs on the
     # chestnut just the same, so ChestnutState has to see it as available too.
     self.chestnut_compiled = self.chestnut_compiled or self.model_runner_tinygrad
@@ -225,8 +238,15 @@ class UIStateSP:
       if not CP.alphaLongitudinalAvailable:
         self.params.remove("AlphaLongitudinalEnabled")
 
+      # Honda enforce-stock-longitudinal is Nidec-only; Bosch selects stock vs. openpilot longitudinal
+      # with the alpha longitudinal toggle. Only cleared offroad: the Bosch CarController watches this
+      # param together with AlphaLongitudinalEnabled and applies a change through an onroad cycle, so
+      # clearing it mid-drive would cycle card without the user touching a toggle.
+      if CP.brand == "honda" and CP.flags & HondaFlags.BOSCH and self.is_offroad():
+        self.params.remove("HondaEnforceStockLongitudinal")
+
       # BSM not available: clear BSM-dependent settings
-      if not CP.enableBsm:
+      if not has_bsm(CP, self.CP_SP):
         self.params.remove("AutoLaneChangeBsmDelay")
     else:
       # No CarParams: clear all car-dependent params as safety default
@@ -235,10 +255,8 @@ class UIStateSP:
       self.params.remove("LateralJerkTorqueController")
       self.params.remove("AlphaLongitudinalEnabled")
 
-    # No longitudinal control: no experimental mode or DEC
     if not has_long:
       self.params.remove("ExperimentalMode")
-      self.params.remove("DynamicExperimentalControl")
 
     # ICBM: clear if not available or if full longitudinal control is active
     if self.CP_SP is not None:

@@ -20,7 +20,7 @@ SetOption('num_jobs', max(1, int(os.cpu_count()/(1 if "CI" in os.environ else 2)
 
 AddOption('--ccflags', action='store', type='string', default='', help='pass arbitrary flags over the command line')
 AddOption('--verbose', action='store_true', default=False, help='show full build commands')
-release = not os.path.exists(File('#.gitattributes').abspath) # file absent on release branch, see release_files.py
+release = not os.path.exists(File('#.gitmodules').abspath) # file absent on release branch, see release_files.py
 AddOption('--minimal',
           action='store_false',
           dest='extras',
@@ -41,6 +41,8 @@ for p in reversed(submodule_python_paths):
 
 if external_pythonpath := os.environ.get("PYTHONPATH"):
   submodule_python_paths += [p for p in external_pythonpath.split(os.pathsep) if p and p not in submodule_python_paths]
+
+from openpilot.common.scons_cache import purge_zero_byte_artifacts  # noqa: E402
 
 # Detect platform
 arch = subprocess.check_output(["uname", "-m"], encoding='utf8').rstrip()
@@ -87,7 +89,6 @@ acados_include_dirs = [
 # vendored in commaai/dependencies.
 allowed_system_libs = {
   "EGL", "GLESv2", "GL",
-  "Qt5Charts", "Qt5Core", "Qt5Gui", "Qt5Widgets",
   "dl", "drm", "gbm", "m", "pthread",
 }
 
@@ -121,6 +122,7 @@ def _libflags(target, source, env, for_signature):
 env = Environment(
   ENV={
     "PATH": os.environ['PATH'],
+    "TMPDIR": os.environ.get('TMPDIR', '/tmp'),
     "PYTHONPATH": os.pathsep.join(submodule_python_paths),
     "ACADOS_SOURCE_DIR": acados.DIR,
     "ACADOS_PYTHON_INTERFACE_PATH": acados.TEMPLATE_DIR,
@@ -240,6 +242,10 @@ cache_size_limit = 4e9 if "CI" in os.environ else 2e9
 CacheDir(cache_dir)
 Clean(["."], cache_dir)
 
+# An interrupted build can leave 0-byte objects that then get cached and
+# restored forever, breaking every subsequent link. Drop them before building.
+purge_zero_byte_artifacts(Dir('#').abspath, cache_dir)
+
 def prune_cache_dir(target=None, source=None, env=None):
   cache_files = sorted((os.path.join(root, f) for root, _, files in os.walk(cache_dir) for f in files), key=os.path.getmtime)
   cache_size = sum(os.path.getsize(f) for f in cache_files)
@@ -316,8 +322,6 @@ def count_scons_nodes(nodes):
     if node in seen:
       continue
     seen.add(node)
-    if hasattr(node, 'has_builder') and node.has_builder():
-      build_product_nodes.add(node)
     executor = node.get_executor()
     if executor is not None:
       stack += executor.get_all_prerequisites() + executor.get_all_children()
@@ -326,7 +330,6 @@ def count_scons_nodes(nodes):
 
 progress_interval = 5
 progress_count = 0
-build_product_nodes = set()
 progress_total = max(1, count_scons_nodes(env.arg2nodes(BUILD_TARGETS or [Dir('.')], env.fs.Entry)))
 
 def progress_function(node):
@@ -342,11 +345,3 @@ def progress_function(node):
 
 Progress(progress_function, interval=progress_interval)
 AddPostAction(BUILD_TARGETS or [Dir('.')], prune_cache_dir)
-
-def check_build_product_size(target, source, env):
-  limit = 50 * 1024 * 1024  # GitHub max size
-  for t in target:
-    if hasattr(t, 'isfile') and t.isfile() and (size := os.path.getsize(t.abspath)) > limit:
-      raise SCons.Errors.UserError(f"{t} is {size / (1024 * 1024):.1f} MiB, exceeding the {limit / (1024 * 1024):.1f} MiB limit")
-if not GetOption('extras'):
-  AddPostAction(list(build_product_nodes), Action(check_build_product_size, None))

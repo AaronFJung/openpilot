@@ -1,51 +1,36 @@
-import io
-import json
-import pickle
-import shutil
-import struct
-import tempfile
+import sys
+import time
 from pathlib import Path
 
-from openpilot.common.file_chunker import get_manifest_path
+from openpilot.common.hardware import AGNOS
 from openpilot.common.hardware.usb import CHESTNUT_USB_PRODUCT, USB_DEVICES_PATH, is_chestnut_usb_id
 
 MODELS_DIR = Path(__file__).resolve().parent / 'models'
-TG_INPUT_DEVICES_PATH = MODELS_DIR / 'tg_input_devices.json'
-CHESTNUT_POWERED_VOLTAGE = 5000
-CHESTNUT_PCIE_READY = 0x78
+BIG_WARP_SIZES = ('1344x760', '1928x1208')
+LFS_POINTER_HEADER = b'version https://git-lfs.github.com/spec/v1'
 
-
-def get_tg_input_devices(process_name: str, chestnut: bool):
-  with open(TG_INPUT_DEVICES_PATH) as f:
-    return json.load(f)[process_name]['default' if not chestnut else 'chestnut']
 
 def modeld_pkl_path(chestnut: bool):
   prefix = 'big_' if chestnut else ''
   return MODELS_DIR / f'{prefix}driving_tinygrad.pkl'
 
-def dump_oob(obj, f):
-  with tempfile.TemporaryFile(dir=".") as tmp:
-    def buffer_callback(pb: pickle.PickleBuffer):
-      m = pb.raw()
-      tmp.write(struct.pack('<q', m.nbytes))
-      tmp.write(m)
-      pb.release() # keep peak ram at ~1 buffer
-    stream = io.BytesIO()
-    pickle.Pickler(stream, protocol=5, buffer_callback=buffer_callback).dump(obj)
-    opcodes = stream.getvalue()
-    f.write(struct.pack('<q', len(opcodes)))
-    f.write(opcodes)
-    tmp.seek(0)
-    shutil.copyfileobj(tmp, f)
+def big_model_paths() -> list[Path]:
+  # everything stock modeld loads to run on chestnut
+  return [modeld_pkl_path(chestnut=True)] + [MODELS_DIR / f'big_driving_warp_{size}_tinygrad.pkl' for size in BIG_WARP_SIZES]
 
-def load_oob(f):
-  opcodes = f.read(struct.unpack('<q', f.read(8))[0])
-  def buffers():
-    while (h := f.read(8)):
-      pb = pickle.PickleBuffer(bytearray(struct.unpack('<q', h)[0]))
-      f.readinto(pb)
-      yield pb
-  return pickle.load(io.BytesIO(opcodes), buffers=buffers())
+def is_lfs_pointer(path: Path) -> bool:
+  try:
+    with open(path, 'rb') as f:
+      return f.read(len(LFS_POINTER_HEADER)) == LFS_POINTER_HEADER
+  except OSError:
+    return False
+
+def load_oob(path, chestnut=False):
+  from tinygrad import Context
+  device = 'USB+AMD:LLVM' if chestnut else 'QCOM' if AGNOS else 'METAL' if sys.platform == 'darwin' else 'CPU:LLVM'
+  with Context(DEV=device):
+    from tinygrad_repo.examples.openpilot.helpers import load_pickle
+    return load_pickle(path, out_of_band=True)
 
 def chestnut_present() -> bool:
   for d in USB_DEVICES_PATH.glob("*"):
@@ -58,9 +43,14 @@ def chestnut_present() -> bool:
       pass
   return False
 
+def wait_for_chestnut(timeout: float = 10.) -> None:
+  # the cable is detected before chestnut enumerates
+  st = time.monotonic()
+  while not chestnut_present():
+    if time.monotonic() - st > timeout:
+      raise TimeoutError("chestnut did not enumerate")
+    time.sleep(0.1)
+
 def chestnut_compiled() -> bool:
-  return Path(get_manifest_path(modeld_pkl_path(chestnut=True))).is_file()
-
-
-def chestnut_ready(state) -> bool:
-  return state.supplyVoltage >= CHESTNUT_POWERED_VOLTAGE and not state.supplyFault and state.pcieLtssm == CHESTNUT_PCIE_READY
+  # an unfetched LFS pointer is not a loadable model
+  return all(path.is_file() and not is_lfs_pointer(path) for path in big_model_paths())
